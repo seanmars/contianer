@@ -27,3 +27,16 @@ docker-compose up -d
 ```shell
 $ docker compose down -v
 ```
+
+## Prometheus
+
+- Access the Prometheus dashboard at [http://localhost:9090](http://localhost:9090).
+- Update targets on runtime
+  
+  ```
+  POST http://localhost:9090/-/reload
+  ```
+
+## Grafana
+
+- Access the Grafana dashboard at [http://localhost:3000](http://localhost:3000).
