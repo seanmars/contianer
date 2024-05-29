@@ -1,0 +1,9 @@
+{
+  "search": {
+    "maxLookback": {
+      "label": "3 Days",
+      "value": "3d"
+    },
+    "limit": 3000
+  }
+}
