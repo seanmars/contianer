@@ -18,7 +18,7 @@ services:
       - ES_TLS_ENABLED=true
       - ES_USERNAME=admin
       - ES_PASSWORD=K*ae_7EBekPt
-      - ES_MAX_SPAN_AGE=30d
+      - ES_MAX_SPAN_AGE=720h0m0s
     networks:
       - observability-net
 
@@ -41,7 +41,7 @@ services:
       - ES_TLS_ENABLED=true
       - ES_USERNAME=admin
       - ES_PASSWORD=K*ae_7EBekPt
-      - ES_MAX_SPAN_AGE=30d
+      - ES_MAX_SPAN_AGE=720h0m0s
     command:
       - "--query.ui-config=/etc/jaeger/config.json"
     volumes:
@@ -68,6 +68,20 @@ services:
     ports:
       - "9200:9200"
       - "9600:9600"
+    networks:
+      - observability-net
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:latest # Make sure the version of opensearch-dashboards matches the version of opensearch installed on other nodes
+    container_name: opensearch-dashboards
+    ports:
+      - 5601:5601 # Map host port 5601 to container port 5601
+    expose:
+      - "5601" # Expose port 5601 for web access to OpenSearch Dashboards
+    environment:
+      OPENSEARCH_HOSTS: '["https://opensearch-node:9200"]'
+      opensearch.username: admin
+      opensearch.password: K*ae_7EBekPt
     networks:
       - observability-net
 
