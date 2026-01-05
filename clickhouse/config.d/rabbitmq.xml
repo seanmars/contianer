@@ -1,0 +1,6 @@
+<clickhouse>
+    <rabbitmq>
+        <username>guest</username>
+        <password>guest</password>
+    </rabbitmq>
+</clickhouse>

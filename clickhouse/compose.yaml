@@ -1,0 +1,17 @@
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: clickhouse
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    environment:
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=changeme
+    volumes:
+      - ./config.d/rabbitmq.xml:/etc/clickhouse-server/config.d/rabbitmq.xml:ro
+      - ./clickhouse_logs:/var/log/clickhouse-server
+      - local_clickhouse_data:/var/lib/clickhouse
+
+volumes:
+  local_clickhouse_data:

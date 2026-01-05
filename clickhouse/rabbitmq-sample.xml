@@ -1,0 +1,8 @@
+<clickhouse>
+    <rabbitmq>
+        <username>guest</username>
+        <password>guest</password>
+        <host>rabbitmq</host>
+        <port>5672</port>
+    </rabbitmq>
+</clickhouse>
