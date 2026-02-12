@@ -1,0 +1,63 @@
+﻿<clickhouse replace="true">
+    <logger>
+        <level>warning</level>
+        <log>/var/log/clickhouse-server/clickhouse-server.log</log>
+        <errorlog>/var/log/clickhouse-server/clickhouse-server.err.log</errorlog>
+        <size>10M</size>
+        <count>3</count>
+    </logger>
+
+    <display_name>clickhouse_rmq</display_name>
+    <listen_host>0.0.0.0</listen_host>
+
+    <asynchronous_metric_log remove="1"/>
+    <backup_log remove="1"/>
+    <!-- <error_log remove="1"/> -->
+    <metric_log remove="1"/>
+    <query_metric_log remove="1"/>
+    <query_thread_log remove="1"/>
+    <query_log remove="1"/>
+    <query_views_log remove="1"/>
+    <part_log remove="1"/>
+    <session_log remove="1"/>
+    <text_log remove="1"/>
+    <trace_log remove="1"/>
+    <crash_log remove="1"/>
+    <opentelemetry_span_log remove="1"/>
+    <zookeeper_log remove="1"/>
+    <processors_profile_log remove="1"/>
+    <latency_log remove="1"/>
+
+    <system_logs>
+        <text_log>
+            <database>system</database>
+            <table>text_log</table>
+            <flush_interval_milliseconds>10000</flush_interval_milliseconds>
+            <ttl>event_date + INTERVAL 1 DAY</ttl>
+        </text_log>
+
+        <trace_log>
+            <database>system</database>
+            <table>trace_log</table>
+            <ttl>event_date + INTERVAL 1 DAY</ttl>
+        </trace_log>
+
+        <query_views_log>
+            <database>system</database>
+            <table>query_views_log</table>
+            <ttl>event_date + INTERVAL 1 DAY</ttl>
+        </query_views_log>
+
+        <metric_log>
+            <database>system</database>
+            <table>metric_log</table>
+            <ttl>event_date + INTERVAL 1 DAY</ttl>
+        </metric_log>
+    </system_logs>
+
+    <rabbitmq>
+        <username>guest</username>
+        <password>guest</password>
+        <!-- <vhost>{vhost}</vhost> -->
+    </rabbitmq>
+</clickhouse>

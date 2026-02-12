@@ -1,0 +1,141 @@
+name: observability
+
+services:
+  # ─────────────────────────────────────────────
+  # OpenTelemetry Collector
+  # 接收應用程式的 OTLP traces / metrics / logs
+  # 並分送至 Tempo、Prometheus、Loki
+  # ─────────────────────────────────────────────
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.145.0
+    container_name: otel-collector
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ./config/otelcol-config.yaml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - "4317:4317"     # OTLP gRPC receiver (應用程式送 traces/metrics/logs)
+      - "4318:4318"     # OTLP HTTP receiver
+      - "8888:8888"     # Collector 自身的 Prometheus metrics
+      - "13133:13133"   # Health check extension
+    depends_on:
+      tempo:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+      prometheus:
+        condition: service_healthy
+    networks:
+      - observability
+
+  # ─────────────────────────────────────────────
+  # Prometheus — 儲存 metrics
+  # ─────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v3.9.1
+    container_name: prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yaml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-remote-write-receiver          # 允許 OTel Collector remote write
+      - --enable-feature=exemplar-storage           # 支援 exemplars（trace 連結）
+      - --web.enable-lifecycle
+    volumes:
+      - ./config/prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - observability
+
+  # ─────────────────────────────────────────────
+  # Loki — 儲存 logs
+  # ─────────────────────────────────────────────
+  loki:
+    image: grafana/loki:3.6
+    container_name: loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/config.yaml
+    volumes:
+      - ./config/loki-config.yaml:/etc/loki/config.yaml:ro
+      - loki-data:/loki
+    ports:
+      - "3100:3100"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:3100/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - observability
+
+  # ─────────────────────────────────────────────
+  # Tempo — 儲存 traces
+  # ─────────────────────────────────────────────
+  tempo:
+    image: grafana/tempo:2.10.0
+    container_name: tempo
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo/config.yaml"]
+    volumes:
+      - ./config/tempo-config.yaml:/etc/tempo/config.yaml:ro
+      - tempo-data:/var/tempo
+    ports:
+      - "3200:3200"     # Tempo HTTP API / query frontend
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:3200/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - observability
+
+  # ─────────────────────────────────────────────
+  # Grafana — 視覺化儀表板
+  # ─────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:12.3
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_FEATURE_TOGGLES_ENABLE=traceqlEditor traceQLStreaming metricsSummary
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+    volumes:
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+      tempo:
+        condition: service_healthy
+    networks:
+      - observability
+
+# ─────────────────────────────────────────────
+# Volumes
+# ─────────────────────────────────────────────
+volumes:
+  prometheus-data:
+  loki-data:
+  tempo-data:
+  grafana-data:
+
+# ─────────────────────────────────────────────
+# Networks
+# ─────────────────────────────────────────────
+networks:
+  observability:
+    driver: bridge

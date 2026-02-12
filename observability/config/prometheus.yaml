@@ -1,0 +1,28 @@
+# Prometheus Configuration
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+
+scrape_configs:
+  # Prometheus 自身
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # OTel Collector 內部 metrics
+  - job_name: "otel-collector"
+    static_configs:
+      - targets: ["otel-collector:8888"]
+
+  # Tempo metrics
+  - job_name: "tempo"
+    static_configs:
+      - targets: ["tempo:3200"]
+    metrics_path: /metrics
+
+  # Loki metrics
+  - job_name: "loki"
+    static_configs:
+      - targets: ["loki:3100"]
+    metrics_path: /metrics

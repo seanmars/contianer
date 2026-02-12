@@ -1,0 +1,51 @@
+# Tempo Configuration (v2.x)
+server:
+  http_listen_port: 3200
+  log_level: info
+
+# 接收 traces
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317    # OTel Collector 送 traces 到這裡
+        http:
+          endpoint: 0.0.0.0:4318
+
+ingester:
+  max_block_duration: 5m            # 減少記憶體壓力
+
+# 本地儲存（生產環境建議換成 S3/GCS）
+storage:
+  trace:
+    backend: local
+    wal:
+      path: /var/tempo/wal
+    local:
+      path: /var/tempo/blocks
+
+compactor:
+  compaction:
+    block_retention: 48h            # 保留 48 小時的 traces
+
+# Metrics Generator：從 traces 自動產生 RED metrics 並寫入 Prometheus
+metrics_generator:
+  registry:
+    external_labels:
+      source: tempo
+      cluster: docker-compose
+  storage:
+    path: /var/tempo/generator/wal
+    remote_write:
+      - url: http://prometheus:9090/api/v1/write
+        send_exemplars: true
+  traces_storage:
+    path: /var/tempo/generator/traces
+
+# 預設啟用 service-graphs 和 span-metrics
+overrides:
+  defaults:
+    metrics_generator:
+      processors: [service-graphs, span-metrics, local-blocks]
+      generate_native_histograms: both

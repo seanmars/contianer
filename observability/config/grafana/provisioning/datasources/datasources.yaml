@@ -1,0 +1,78 @@
+# Grafana Datasource Provisioning
+# 自動設定 Prometheus、Loki、Tempo 資料來源
+apiVersion: 1
+
+datasources:
+  # ── Prometheus (Metrics) ──────────────────────
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    jsonData:
+      httpMethod: POST
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: tempo
+          urlDisplayLabel: "View Trace in Tempo"
+
+  # ── Loki (Logs) ───────────────────────────────
+  - name: Loki
+    type: loki
+    uid: loki
+    access: proxy
+    url: http://loki:3100
+    editable: true
+    jsonData:
+      derivedFields:
+        - datasourceUid: tempo
+          matcherRegex: "traceID=(\\w+)"
+          name: TraceID
+          url: "${__value.raw}"
+          urlDisplayLabel: "View Trace in Tempo"
+
+  # ── Tempo (Traces) ────────────────────────────
+  - name: Tempo
+    type: tempo
+    uid: tempo
+    access: proxy
+    url: http://tempo:3200
+    editable: true
+    jsonData:
+      # Traces → Logs 連結
+      tracesToLogsV2:
+        datasourceUid: loki
+        spanStartTimeShift: "-1h"
+        spanEndTimeShift: "1h"
+        filterByTraceID: true
+        filterBySpanID: false
+        customQuery: true
+        query: '{service_name="${__span.tags["service.name"]}"} |= "${__span.traceId}"'
+      # Traces → Metrics 連結
+      tracesToMetrics:
+        datasourceUid: prometheus
+        spanStartTimeShift: "-2m"
+        spanEndTimeShift: "2m"
+        queries:
+          - name: "Request Rate"
+            query: 'rate(traces_spanmetrics_calls_total{$$__tags}[5m])'
+          - name: "Error Rate"
+            query: 'rate(traces_spanmetrics_calls_total{$$__tags, status_code="STATUS_CODE_ERROR"}[5m])'
+          - name: "Latency (p99)"
+            query: 'histogram_quantile(0.99, sum(rate(traces_spanmetrics_duration_milliseconds_bucket{$$__tags}[5m])) by (le))'
+      # Service Map（由 Tempo metrics generator 產生）
+      serviceMap:
+        datasourceUid: prometheus
+      # Loki 搜尋整合
+      lokiSearch:
+        datasourceUid: loki
+      # Node Graph
+      nodeGraph:
+        enabled: true
+      # TraceQL Editor
+      traceQuery:
+        timeShiftEnabled: true
+        spanStartTimeShift: "1h"
+        spanEndTimeShift: "-1h"
